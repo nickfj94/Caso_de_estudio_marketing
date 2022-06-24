@@ -30,8 +30,18 @@ df_users
 df_users['userId'].unique().shape[0]
 df_movies['movieId'].unique().shape[0]
 
-### Eliminar la columna  timstamp
+df_users.info()
+df_movies.info()
 
+#cambiar la separacion del genero
+df_movies['genres'] = df_movies.genres.str.split('|')
+
+
+
+#Formato fecha date
+df_users['date']= pd.to_datetime(df_users['date']) 
+
+### Eliminar la columna  timstamp
 df_users.drop(['timestamp'], axis=1,inplace=True)
 
 ### union
