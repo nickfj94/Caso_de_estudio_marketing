@@ -96,6 +96,7 @@ df_movies['title'] = df_movies.title.str.replace(' (\(\d\d\d\d\))', '')
 
 
 ### ANALISIS EXPLORATORIO
+
 df_movies.info()
 df_users.info()
 
@@ -141,7 +142,7 @@ df['month_rating'] = pd.to_datetime(df_users['date']).dt.month
 df['year_rating'] = pd.to_datetime(df_users['date']).dt.year
 
 # Cantidad de calificaciones por mes del año
-df.groupby(['month'])['rating'].count().sort_values(ascending=False)
+df.groupby(['month_rating'])['rating'].count().sort_values(ascending=False)
 # Cantidad de calificaciones por año
 df.groupby(['year_rating'])['rating'].count().sort_values(ascending=False)
 # Cantidad de calificaciones por año de la pelicula
@@ -193,6 +194,17 @@ plt.show()
 usuario_ver = 0 #data.iloc[0]['userId'] - 1 # resta 1 para obtener el index de pandas.
 user0=users_predictions.argsort()[usuario_ver]
 # ver los 10 recomendados con mayor puntaje en la predic para este usuario
-for i, aRepo in enumerate(user0[-10:]):
+for i, aRepo in enumerate(user0[-3:]):
     selRepo = df_movies[df_movies['movieId']==(aRepo+1)]
     print(selRepo['title'] ,selRepo['movieId'], 'puntaje:', users_predictions[usuario_ver][aRepo])
+
+
+
+usuario_ver = 0 #data.iloc[0]['userId'] - 1 # resta 1 para obtener el index de pandas.
+user0=users_predictions.argsort()[usuario_ver]
+# ver los 10 recomendados con mayor puntaje en la predic para este usuario
+for i, aRepo in enumerate(user0[-3:]):
+    selRepo = df_movies[df_movies['movieId']==(aRepo+1)]
+    print(selRepo['title'] ,selRepo['movieId'], 'puntaje:', users_predictions[usuario_ver][aRepo])
+
+type(users_predictions)
