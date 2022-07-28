@@ -25,22 +25,20 @@ import sklearn
 """
 Solución
 
-Crear una lista o varias de recomendaciones para cada usario, ordenada por el rating,
-ademas el usuario pueda filtrar por genero u año de la pelicula o por temporada del año.
-
-Cuando un usuario nuevo se registre, solicitarle info de generos favoritos,
-y de esta forma crear una lista para recomendarle
+Crear un top 5 de las peliculas mas recomendadas con mayor rating y un 
+modelo colaborativo donde se recomienda semanalmente peliculas a los usuarios
 
 """
 
 """
 Problema Negocio
-Con el objetivo de que estos tengan una mejor experiencia y esto permita mejorar 
-su fidelización y recomendación a nuevos clientes. 
+La plataforma online desea mejorar la fidelización de sus clientes,
+mediante un sistema de recomendación para que sus usuarios tengan una mejor 
+experiencia
 
-Problema analitico
-Crear un algoritmo de recomendaciones de peliculas, basado en un filtrado colaborativo
-
+Problema analítico
+Crear un modelo de recomendaciones de peliculas a los clientes de una 
+plataforma online
 """
 
 
@@ -111,7 +109,7 @@ pd.crosstab(index=df_users['date'], columns=' count ')
 
 #Conteo de calificación 
 pd.crosstab(index=df_users['rating'], columns=' count ')
-
+plt.hist(df_users.rating,bins=10)
 
 # Matriz peliculas ID y rating
 pd.crosstab(index=df_users['rating'], columns=df_users['movieId'], margins=True)
@@ -120,11 +118,6 @@ pd.crosstab(index=df_users['rating'], columns=df_users['movieId'], margins=True)
 pd.crosstab(index=df_users['rating'], columns=df_users['userId'], margins=True)
 
 """Las calidicaciones reflejan la cantidad de vistas que ha tenido una pelicula"""
-
-
-
-# Matriz de usuario y peliculas con rating, llenando los vacios con 0
-pd.pivot_table(df_users, values='rating', index='userId', columns='movieId').fillna(0)
 
 # Union bases de datos
 
@@ -137,7 +130,7 @@ df.groupby(['movieId','title','year'])['rating'].count().sort_values(ascending=F
 df.groupby(['movieId','title','year'])['rating'].count().sort_values(ascending=False).tail()
 
 """ La fecha de la pelicula no debe ser tan determinante para calificarla mas que otra"""
-
+df['day_rating'] = pd.to_datetime(df_users['date']).dt.day
 df['month_rating'] = pd.to_datetime(df_users['date']).dt.month
 df['year_rating'] = pd.to_datetime(df_users['date']).dt.year
 
@@ -147,6 +140,8 @@ df.groupby(['month_rating'])['rating'].count().sort_values(ascending=False)
 df.groupby(['year_rating'])['rating'].count().sort_values(ascending=False)
 # Cantidad de calificaciones por año de la pelicula
 df.groupby(['year'])['rating'].count().sort_values(ascending=False)
+
+df.drop(['date'], axis=1,inplace=True)
 
 ### ------------------ALGORITMOS----------------
 
@@ -191,20 +186,55 @@ plt.colorbar()
 plt.show()
 
 #ejemplo de prediccón de usuario
-usuario_ver = 0 #data.iloc[0]['userId'] - 1 # resta 1 para obtener el index de pandas.
+usuario_ver = 0 #indice
 user0=users_predictions.argsort()[usuario_ver]
 # ver los 10 recomendados con mayor puntaje en la predic para este usuario
-for i, aRepo in enumerate(user0[-3:]):
+for i, aRepo in enumerate(user0[-5:]):
     selRepo = df_movies[df_movies['movieId']==(aRepo+1)]
     print(selRepo['title'] ,selRepo['movieId'], 'puntaje:', users_predictions[usuario_ver][aRepo])
 
+### ------------------ALGORITMOS----------------
+#---------filtro colaborativo
+#---------basado en contenido
+#---------Metodo ponderacion de los generos
+
+usuario = df.loc[:,'userId']==1
+df_usuario = df.loc[usuario]
+df_usuario
+df_usuario.drop(['userId','month_rating','year_rating','day_rating'], axis=1,inplace=True)
+df_usuario.info()
+df_usuario['year'].unique()
+df_usuario['year']=df_usuario['year'].astype(int)
+df_usuario = df_usuario.convert_dtypes()
+df_movies
+
+df_usuario = df_usuario.reset_index(drop=True)
+tabla_usuario = df_usuario.drop(['movieId','rating','title','year'],axis = 1)
+tabla_usuario
+
+df_usuario['rating']
+
+#Producto escalar entre la tabla usario y el dataframe usuario para obtener los pesos
+perfil = tabla_usuario.transpose().dot(df_usuario['rating'])
+#Perfil del usuario
+perfil
 
 
-usuario_ver = 0 #data.iloc[0]['userId'] - 1 # resta 1 para obtener el index de pandas.
-user0=users_predictions.argsort()[usuario_ver]
-# ver los 10 recomendados con mayor puntaje en la predic para este usuario
-for i, aRepo in enumerate(user0[-3:]):
-    selRepo = df_movies[df_movies['movieId']==(aRepo+1)]
-    print(selRepo['title'] ,selRepo['movieId'], 'puntaje:', users_predictions[usuario_ver][aRepo])
+#Ahora llevemos los géneros de cada película al marco de datos original
+df_movies
+tabla_genero = df_movies.set_index(df_movies['movieId'])
+#Y eliminemos información innecesaria
+tabla_genero = tabla_genero.drop(['movieId','title','year'],axis = 1)
 
-type(users_predictions)
+tabla_genero.head()
+
+#Multiplicando los géneros por los pesos para luego calcular el peso promedio
+df_recomendaciones = ((tabla_genero*perfil).sum(axis=1))/(perfil.sum())
+df_recomendaciones.head()
+df_recomendaciones = df_recomendaciones.sort_values(ascending =False)
+df_recomendaciones = pd.DataFrame(df_recomendaciones)
+df_recomendaciones.reset_index(inplace=True, drop=False)
+
+df2 = df_recomendaciones.merge(df_movies, on = 'movieId', how = 'left')
+df2 = df2.rename(columns={0:'puntaje'})
+df2[['title','puntaje']].head()
